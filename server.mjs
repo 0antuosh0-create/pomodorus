@@ -522,7 +522,10 @@ async function proxyToUpstream(req, res, pathAndQuery, method = req.method, body
   };
 
   const reqCookies = parseCookies(req);
-  const cookieVal = cfg.sessionCookie || reqCookies["pomodorus_session"];
+  // The visitor's own cookie wins over the gateway mirror identity. The old
+  // order (global first) ran every logged-in visitor's requests as the
+  // operator and made /api/me return the operator to strangers.
+  const cookieVal = reqCookies["pomodorus_session"] || cfg.sessionCookie;
   if (cookieVal) {
     headers["Cookie"] = `pomodorus_session=${cookieVal}`;
   }
@@ -546,7 +549,10 @@ async function proxyToUpstream(req, res, pathAndQuery, method = req.method, body
     if (setCookie) {
       resHeaders["Set-Cookie"] = setCookie;
       const match = setCookie.match(/pomodorus_session=([^;]+)/);
-      if (match && match[1]) {
+      // A visitor logging in through the site must not clobber the gateway's
+      // mirror identity with their own session — only the admin rotates it.
+      // (Without UPSTREAM_ADMIN_TOKEN this is unchanged: everything is admin.)
+      if (match && match[1] && isUpstreamAdmin(req, body)) {
         saveUpstreamConfig({ sessionCookie: match[1] });
         upstreamAuthenticated = true;
         startUpstreamWebSocket();

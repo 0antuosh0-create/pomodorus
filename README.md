@@ -471,6 +471,42 @@ In standard productivity setups, deep work execution and retrospective habit tra
 - دیوار ماه تقویم جلالی، شدت تلاش روزهای ماه را بدون نیاز به لاگ دستی رنگ‌آمیزی می‌کند.
 ---
 
+## Contributors / مشارکت‌کنندگان
+
+Heartfelt gratitude to the creators and maintainers whose foundational work, algorithms, and ideas built this unified platform:
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="220px">
+        <a href="https://github.com/moein8668-git">
+          <img src="https://github.com/moein8668-git.png?size=100" width="100px;" alt="Moein"/><br />
+          <sub><b>Moein (@moein8668-git)</b></sub>
+        </a><br />
+        <sub>Creator of <a href="https://github.com/moein8668-git/mTracker">mTracker</a></sub><br />
+        <small>Habit tracking, SD volatility metrics & Jalali calendar</small>
+      </td>
+      <td align="center" width="220px">
+        <a href="https://github.com/yazdanctx">
+          <img src="https://github.com/yazdanctx.png?size=100" width="100px;" alt="Yazdan"/><br />
+          <sub><b>Yazdan (@yazdanctx)</b></sub>
+        </a><br />
+        <sub>Creator of <a href="https://github.com/yazdanctx/pomodorus">Pomodorus</a></sub><br />
+        <small>Minimal Pomodoro design, server clock & WebSocket feed</small>
+      </td>
+      <td align="center" width="220px">
+        <a href="https://github.com/0antuosh0-create">
+          <img src="https://github.com/0antuosh0-create.png?size=100" width="100px;" alt="Antoush"/><br />
+          <sub><b>Antoush (@0antuosh0-create)</b></sub>
+        </a><br />
+        <sub>Maintainer & Synthesizer</sub><br />
+        <small>Hybrid architecture, sync bridge & integration</small>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
 ## License
 
 This project is licensed under the [MIT License](LICENSE).

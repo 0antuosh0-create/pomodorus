@@ -391,6 +391,20 @@ function saveUpstreamConfig(updates) {
     return loadUpstreamConfig();
   }
 }
+// --- Gateway admin gate -------------------------------------------------------
+// There is no working local login in this gateway (db.sessions is never
+// written, so `user` is always null and cannot gate anything). The global
+// upstream identity is guarded by a shared admin token instead: with
+// UPSTREAM_ADMIN_TOKEN set, mutating it requires the token; without it
+// (single-user local dev) behavior is unchanged.
+function isUpstreamAdmin(req, body) {
+  const token = process.env.UPSTREAM_ADMIN_TOKEN || "";
+  if (!token) return true;
+  const headerToken = req.headers["x-admin-token"];
+  if (typeof headerToken === "string" && headerToken === token) return true;
+  if (body && typeof body.adminToken === "string" && body.adminToken === token) return true;
+  return false;
+}
 
 let upstreamWs = null;
 let upstreamWsConnected = false;
@@ -597,6 +611,7 @@ async function handleRequest(req, res) {
   if (pathname === "/api/upstream/config" && method === "POST") {
     try {
       const body = await readJsonBody(req);
+      if (!isUpstreamAdmin(req, body)) return errorResponse(res, 401, "admin_token_required");
       const cfg = loadUpstreamConfig();
 
       let nextHandle = cfg.handle;
@@ -709,9 +724,14 @@ async function handleRequest(req, res) {
   }
 
   if (pathname === "/api/auth/sign-out" && method === "POST") {
-    saveUpstreamConfig({ sessionCookie: "" });
-    upstreamAuthenticated = false;
-    startUpstreamWebSocket();
+    // The visitor's own cookie is always cleared; the server-global mirror
+    // identity is only disconnected by the admin, so a stranger cannot kill
+    // the gateway's upstream sync with one anonymous call.
+    if (isUpstreamAdmin(req, null)) {
+      saveUpstreamConfig({ sessionCookie: "" });
+      upstreamAuthenticated = false;
+      startUpstreamWebSocket();
+    }
     res.writeHead(204, {
       "Set-Cookie": "pomodorus_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
     });

@@ -17,3 +17,5 @@ services:
         value: anoush
       # UPSTREAM_SESSION_COOKIE is secret: set it in the Render dashboard,
       # never bake it into this file.
+      - key: UPSTREAM_ADMIN_TOKEN
+        sync: false # Render prompts for the value; strangers never see it.

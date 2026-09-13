@@ -43,6 +43,9 @@ export function UpstreamSyncModal({ open, onClose }: Props) {
   const [status, setStatus] = useState<UpstreamStatus | null>(null);
   const [handleInput, setHandleInput] = useState("");
   const [cookieInput, setCookieInput] = useState("");
+  const [adminToken, setAdminToken] = useState(
+    () => localStorage.getItem("upstream_admin_token") || ""
+  );
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -84,15 +87,21 @@ export function UpstreamSyncModal({ open, onClose }: Props) {
       const res = await fetch("/api/upstream/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ handle: cleanHandle }),
+        body: JSON.stringify({ handle: cleanHandle, adminToken: adminToken || undefined }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
+        if (adminToken) localStorage.setItem("upstream_admin_token", adminToken);
         setMessage({
           type: "success",
           text: `نام کاربری به @${data.handle} تغییر یافت. بازتاب وضعیت و استمرار فعال است.`,
         });
         await fetchStatus();
+      } else if (res.status === 401) {
+        setMessage({
+          type: "error",
+          text: "این تغییر توکن مدیر می‌خواد. توکن رو پایین وارد کن و دوباره بزن.",
+        });
       } else {
         setMessage({
           type: "error",
@@ -122,16 +131,23 @@ export function UpstreamSyncModal({ open, onClose }: Props) {
         body: JSON.stringify({
           sessionCookie: cookieInput.trim(),
           handle: handleInput.trim() || status?.handle || "anoush",
+          adminToken: adminToken || undefined,
         }),
       });
       const data = await res.json();
       if (res.ok && data.success && data.verified) {
+        if (adminToken) localStorage.setItem("upstream_admin_token", adminToken);
         setMessage({
           type: "success",
           text: `احراز هویت حساب @${data.handle} با موفقیت تأیید شد. کنترل دوطرفه تایمر فعال است.`,
         });
         setCookieInput("");
         await fetchStatus();
+      } else if (res.status === 401) {
+        setMessage({
+          type: "error",
+          text: "این تغییر توکن مدیر می‌خواد. توکن رو پایین وارد کن و دوباره بزن.",
+        });
       } else {
         setMessage({
           type: "error",
@@ -151,19 +167,27 @@ export function UpstreamSyncModal({ open, onClose }: Props) {
   const handleDisconnectCookie = async () => {
     setSubmitting(true);
     try {
-      await fetch("/api/upstream/config", {
+      const res = await fetch("/api/upstream/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clearCookie: true,
           handle: status?.handle || "anoush",
+          adminToken: adminToken || undefined,
         }),
       });
       await fetchStatus();
-      setMessage({
-        type: "success",
-        text: "ارتباط کوکی قطع شد. پخش زنده و رصد عمومی همچنان فعال است.",
-      });
+      setMessage(
+        res.status === 401
+          ? {
+              type: "error",
+              text: "این تغییر توکن مدیر می‌خواد. توکن رو پایین وارد کن و دوباره بزن.",
+            }
+          : {
+              type: "success",
+              text: "ارتباط کوکی قطع شد. پخش زنده و رصد عمومی همچنان فعال است.",
+            }
+      );
     } finally {
       setSubmitting(false);
     }
@@ -290,6 +314,15 @@ export function UpstreamSyncModal({ open, onClose }: Props) {
                 ذخیره نام کاربری
               </Button>
             </form>
+            <Input
+              type="password"
+              placeholder="توکن مدیر (فقط صاحب سرور — خالی = لوکال)"
+              value={adminToken}
+              onChange={(e) => setAdminToken(e.target.value)}
+              className="text-xs h-8 rounded-none border-border bg-background font-vazir"
+              disabled={submitting}
+              dir="ltr"
+            />
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               با وارد کردن نام کاربری، وضعیت فوکوس و تایمر شما مستقیماً از سرور اصلی بازتاب داده می‌شود.
             </p>

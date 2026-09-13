@@ -5,7 +5,7 @@ services:
     plan: free
     autoDeploy: true
     # tsc has 34 pre-existing strict errors; ship the Vite bundle directly.
-    buildCommand: npm install && cd client && npm ci && npx vite build && cd ..
+    buildCommand: npm install --include=dev && cd client && npm ci --include=dev && npx vite build && cd ..
     startCommand: node server.mjs
     healthCheckPath: /api/health
     envVars:

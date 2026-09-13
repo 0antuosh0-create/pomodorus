@@ -759,23 +759,17 @@ async function handleRequest(req, res) {
   }
 
   if (pathname === "/api/handle" && method === "POST") {
-    if (!user) return errorResponse(res, 401, "not_signed_in");
+    // No local accounts exist in this gateway (db.sessions is never written),
+    // so claiming happens upstream, attributed to the visitor's own session.
+    // Without a visitor cookie there is nobody to claim for.
+    if (!cookies["pomodorus_session"]) return errorResponse(res, 401, "not_signed_in");
     try {
       const body = await readJsonBody(req);
-      const rawHandle = String(body.handle || "").trim().toLowerCase();
+      const rawHandle = String(body.handle || "").trim().toLowerCase().replace(/^@/, "");
       if (!/^[a-z0-9_]{3,24}$/.test(rawHandle)) {
         return errorResponse(res, 400, "invalid_handle");
       }
-
-      for (const acc of Object.values(db.accounts)) {
-        if (acc.id !== user.id && acc.handle && acc.handle.toLowerCase() === rawHandle) {
-          return errorResponse(res, 400, "handle_taken");
-        }
-      }
-
-      user.handle = rawHandle;
-      saveData();
-      return jsonResponse(res, 200, { handle: user.handle });
+      return proxyToUpstream(req, res, "/api/handle", "POST", { handle: rawHandle });
     } catch {
       return errorResponse(res, 400, "bad_request");
     }
@@ -800,7 +794,13 @@ async function handleRequest(req, res) {
   if (pathname === "/api/categories" && method === "POST") {
     const cfg = loadUpstreamConfig();
     if (cfg.sessionCookie) {
-      const body = await readJsonBody(req);
+      if (!cookies["pomodorus_session"]) return errorResponse(res, 401, "not_signed_in");
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        return errorResponse(res, 400, "bad_request");
+      }
       return proxyToUpstream(req, res, "/api/categories", "POST", body);
     }
     if (!user) return errorResponse(res, 401, "not_signed_in");
@@ -826,7 +826,13 @@ async function handleRequest(req, res) {
   if (pathname.startsWith("/api/categories/") && method === "POST") {
     const cfg = loadUpstreamConfig();
     if (cfg.sessionCookie) {
-      const body = await readJsonBody(req);
+      if (!cookies["pomodorus_session"]) return errorResponse(res, 401, "not_signed_in");
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        return errorResponse(res, 400, "bad_request");
+      }
       return proxyToUpstream(req, res, pathname, "POST", body);
     }
     if (!user) return errorResponse(res, 401, "not_signed_in");
@@ -861,7 +867,13 @@ async function handleRequest(req, res) {
   if (pathname === "/api/intervals" && method === "POST") {
     const cfg = loadUpstreamConfig();
     if (cfg.sessionCookie) {
-      const body = await readJsonBody(req);
+      if (!cookies["pomodorus_session"]) return errorResponse(res, 401, "not_signed_in");
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        return errorResponse(res, 400, "bad_request");
+      }
       return proxyToUpstream(req, res, "/api/intervals", "POST", body);
     }
     if (!user) return errorResponse(res, 401, "not_signed_in");
@@ -904,7 +916,7 @@ async function handleRequest(req, res) {
 
     if (!profileAccount) {
       try {
-        const range = Number(parsedUrl.searchParams.get("range")) || 7;
+        const range = Number(parsedUrl.searchParams.get("range") ?? parsedUrl.searchParams.get("days")) || 7;
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 3500);
         const remoteRes = await fetch(`https://pomodorus.yazdan.me/api/profile/${encodeURIComponent(handle)}?range=${range}`, {
@@ -918,7 +930,7 @@ async function handleRequest(req, res) {
       } catch {}
       return errorResponse(res, 404, "user_not_found");
     }
-    const range = Number(parsedUrl.searchParams.get("range")) || 7;
+    const range = Number(parsedUrl.searchParams.get("range") ?? parsedUrl.searchParams.get("days")) || 7;
     const allDays = profileAccount.history || createSampleProfileDays(profileAccount.handle);
     const sliceDays = allDays.slice(Math.max(0, allDays.length - range));
     const isOwner = Boolean(user && user.id === profileAccount.id);
@@ -1042,7 +1054,13 @@ async function handleRequest(req, res) {
   if (pathname === "/api/session/start" && method === "POST") {
     const cfg = loadUpstreamConfig();
     if (cfg.sessionCookie) {
-      const body = await readJsonBody(req);
+      if (!cookies["pomodorus_session"]) return errorResponse(res, 401, "not_signed_in");
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        return errorResponse(res, 400, "bad_request");
+      }
       return proxyToUpstream(req, res, "/api/session/start", "POST", body);
     }
     if (!user) return errorResponse(res, 401, "not_signed_in");
@@ -1097,7 +1115,14 @@ async function handleRequest(req, res) {
   if (pathname.includes("/cancel") && method === "POST") {
     const cfg = loadUpstreamConfig();
     if (cfg.sessionCookie) {
-      return proxyToUpstream(req, res, pathname, "POST");
+      if (!cookies["pomodorus_session"]) return errorResponse(res, 401, "not_signed_in");
+      let body = null;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        return errorResponse(res, 400, "bad_request");
+      }
+      return proxyToUpstream(req, res, pathname, "POST", Object.keys(body).length ? body : null);
     }
     if (!user) return errorResponse(res, 401, "not_signed_in");
     const timerState = getUserTimerState(user.id);
@@ -1117,7 +1142,14 @@ async function handleRequest(req, res) {
   if (pathname.includes("/confirm") && method === "POST") {
     const cfg = loadUpstreamConfig();
     if (cfg.sessionCookie) {
-      return proxyToUpstream(req, res, pathname, "POST");
+      if (!cookies["pomodorus_session"]) return errorResponse(res, 401, "not_signed_in");
+      let body = null;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        return errorResponse(res, 400, "bad_request");
+      }
+      return proxyToUpstream(req, res, pathname, "POST", Object.keys(body).length ? body : null);
     }
     if (!user) return errorResponse(res, 401, "not_signed_in");
     const timerState = getUserTimerState(user.id);

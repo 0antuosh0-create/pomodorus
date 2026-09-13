@@ -14,7 +14,7 @@ export function MTrackerDataRoute() {
     loadSample,
     clearAll,
   } = useMTracker();
-  const [remoteHandle, setRemoteHandle] = useState(getAutoSyncHandle);
+  const [remoteHandle, setRemoteHandle] = useState<string>(getAutoSyncHandle() ?? "");
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);

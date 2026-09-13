@@ -410,9 +410,12 @@ export function safeTaskColor(color: string | null | undefined): string {
 const STORAGE_KEY = "mtracker.db.v1";
 const SYNC_HANDLE_KEY = "mtracker.sync_handle";
 
-export function getAutoSyncHandle(): string {
-  if (typeof window === "undefined") return "anoush";
-  return localStorage.getItem(SYNC_HANDLE_KEY) || "anoush";
+export function getAutoSyncHandle(): string | null {
+  if (typeof window === "undefined") return null;
+  // No default: auto-import only runs after the user explicitly picks a
+  // handle in Data settings. Defaulting to someone else's handle silently
+  // replaced strangers' local databases with his snapshot every 5 minutes.
+  return localStorage.getItem(SYNC_HANDLE_KEY);
 }
 
 export function setAutoSyncHandle(handle: string) {

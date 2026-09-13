@@ -141,7 +141,7 @@ If you want focus sessions started on localhost to officially count toward your 
 2. **Transparent Reverse Proxy for Mutations**:
    - When configured with your `pomodorus_session` cookie (via the UI modal or `UPSTREAM_SESSION_COOKIE`), all write actions are forwarded seamlessly:
      - Starting a session: `/api/session/start`
-     - Ending, confirming, or resetting: `/api/session/confirm`, `/api/session/stop`
+     - Ending a session early: `POST /api/session/{id}/cancel`; confirming a ring: `POST /api/session/{id}/confirm`
      - Category management: `/api/categories`
      - Interval configuration: `/api/intervals`
    - Because mutations execute directly against the production database, any pomodoro completed in this local client is immediately credited to your official profile on `pomodorus.yazdan.me`!
@@ -195,7 +195,7 @@ graph TD
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yazdanctx/pomodorus.git
+   git clone https://github.com/0antuosh0-create/pomodorus.git
    cd pomodorus
    ```
 
@@ -212,8 +212,9 @@ graph TD
 
 3. **Build the client bundle:**
    ```bash
-   npm run build
+   cd client && npx vite build && cd ..
    ```
+   (Root `npm run build` typechecks first via `tsc -b` and currently fails on pre-existing strict errors; the Vite bundle is what ships.)
 
 4. **Start the local server:**
    ```bash
@@ -230,7 +231,7 @@ You can customize runtime ports and options using environment variables:
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `PORT` | `5174` | Port for the Node.js API and static server |
-| `NODE_ENV` | `development` | Environment mode (`development` or `production`) |
+| `UPSTREAM_ADMIN_TOKEN` | `""` | Required to change the upstream mirror on a deploy; unset means local single-user mode |
 | `UPSTREAM_SESSION_COOKIE` | `""` | Optional `pomodorus_session` cookie for authenticated live sync |
 
 ---
@@ -343,7 +344,7 @@ You can customize runtime ports and options using environment variables:
    - با تنظیم کوکی سشن (`pomodorus_session`) از طریق پنجره پاپ‌آپ داخل برنامه یا متغیر `UPSTREAM_SESSION_COOKIE`، تمامی درخواست‌های نوشتن به سرور اصلی فوروارد می‌شوند:
      - شروع سشن تمرکز (`POST /api/session/start`)
      - اتمام، تایید و ثبت نهایی پومودورو (`POST /api/session/confirm`)
-     - توقف یا ریست تایمر (`POST /api/session/stop`)
+     - لغو و پایان زودهنگام سشن (`POST /api/session/{id}/cancel`)
      - دریافت و ویرایش دسته‌بندی‌ها و تنظیمات اینتروال‌ها (`/api/categories`, `/api/intervals`)
    - به همین دلیل، هر فوکوس و پومودورویی که در این نسخه لوکال ثبت کنید، مستقیماً و بلادرنگ در دیتابیس رسمی یزدان و روی پروفایل عمومی شما در `pomodorus.yazdan.me` ثبت خواهد شد.
 
@@ -383,7 +384,7 @@ You can customize runtime ports and options using environment variables:
 
 ۱. **دریافت مخزن:**
    ```bash
-   git clone https://github.com/yazdanctx/pomodorus.git
+   git clone https://github.com/0antuosh0-create/pomodorus.git
    cd pomodorus
    ```
 
@@ -400,8 +401,9 @@ You can customize runtime ports and options using environment variables:
 
 ۳. **بیلد گرفتن از فرانت‌اند:**
    ```bash
-   npm run build
+   cd client && npx vite build && cd ..
    ```
+   (بیلد ریشه اول تایپ‌چک می‌کند و فعلاً به‌خاطر خطاهای strict قبلی fail می‌شود؛ خروجی Vite همان چیزی است که منتشر می‌شود.)
 
 ۴. **اجرای سرور توسعه:**
    ```bash

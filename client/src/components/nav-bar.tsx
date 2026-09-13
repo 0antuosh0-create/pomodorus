@@ -55,8 +55,8 @@ export function NavBar() {
   if (HIDE_ON.includes(pathname)) return null;
 
   const showSubNav = !HIDE_SUB_ON.includes(pathname);
-  const displayHandle = upstreamInfo?.handle || "anoush";
-  const isConnected = upstreamInfo?.wsConnected ?? true;
+  const displayHandle = upstreamInfo?.handle || "…";
+  const isConnected = upstreamInfo?.wsConnected ?? false;
   const isAuthenticated = upstreamInfo?.authenticated ?? false;
 
   return (

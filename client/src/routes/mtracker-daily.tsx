@@ -18,7 +18,11 @@ export function MTrackerDailyRoute() {
   const [searchParams, setSearchParams] = useSearchParams();
   const todayIso = useMemo(() => getIsoDate(), []);
 
-  const selectedDateIso = searchParams.get("date") || todayIso;
+  const rawDate = searchParams.get("date");
+  const selectedDateIso =
+    rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && !Number.isNaN(Date.parse(rawDate))
+      ? rawDate
+      : todayIso;
   const selectedDate = useMemo(() => parseIsoDate(selectedDateIso), [selectedDateIso]);
 
   const { tasks, entries, addEntry, deleteEntry } = useMTracker();

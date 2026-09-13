@@ -319,9 +319,11 @@ export function UpstreamSyncModal({ open, onClose }: Props) {
               placeholder="توکن مدیر (فقط صاحب سرور — خالی = لوکال)"
               value={adminToken}
               onChange={(e) => setAdminToken(e.target.value)}
-              className="text-xs h-8 rounded-none border-border bg-background font-vazir text-right placeholder:text-right"
+              className={`text-xs h-8 rounded-none border-border bg-background font-vazir placeholder:text-right ${
+                adminToken ? "text-left" : "text-right"
+              }`}
               disabled={submitting}
-              dir="rtl"
+              dir={adminToken ? "ltr" : "rtl"}
             />
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               با وارد کردن نام کاربری، وضعیت فوکوس و تایمر شما مستقیماً از سرور اصلی بازتاب داده می‌شود.
@@ -367,8 +369,11 @@ export function UpstreamSyncModal({ open, onClose }: Props) {
                     placeholder="کوکی pomodorus_session..."
                     value={cookieInput}
                     onChange={(e) => setCookieInput(e.target.value)}
-                    className="text-xs h-8 rounded-none border-border bg-background font-vazir"
+                    className={`text-xs h-8 rounded-none border-border bg-background font-vazir placeholder:text-right ${
+                      cookieInput ? "text-left" : "text-right"
+                    }`}
                     disabled={submitting}
+                    dir={cookieInput ? "ltr" : "rtl"}
                   />
                   <Button
                     type="submit"

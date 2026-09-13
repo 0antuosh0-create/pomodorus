@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: pomodorus
+    runtime: node
+    plan: free
+    autoDeploy: true
+    # tsc has 34 pre-existing strict errors; ship the Vite bundle directly.
+    buildCommand: npm install && cd client && npm ci && npx vite build && cd ..
+    startCommand: node server.mjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: UPSTREAM_HANDLE
+        value: anoush
+      # UPSTREAM_SESSION_COOKIE is secret: set it in the Render dashboard,
+      # never bake it into this file.

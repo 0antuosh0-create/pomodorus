@@ -6,6 +6,8 @@
 </p>
 
 <p align="center">
+  <a href="https://pomodorus.onrender.com"><img src="https://img.shields.io/badge/Live_Demo-Online-brightgreen.svg" alt="Live Demo"></a>
+  <a href="https://render.com/deploy?repo=https://github.com/0antuosh0-create/pomodorus"><img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render"></a>
   <a href="#english"><img src="https://img.shields.io/badge/Language-English-blue.svg" alt="English"></a>
   <a href="#فارسی"><img src="https://img.shields.io/badge/زبان-فارسی-emerald.svg" alt="Persian"></a>
   <a href="https://github.com/yazdanctx/pomodorus"><img src="https://img.shields.io/badge/Upstream-Pomodorus-yellow.svg" alt="Pomodorus Upstream"></a>

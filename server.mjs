@@ -670,6 +670,11 @@ async function handleRequest(req, res) {
   }
 
   if (pathname === "/api/me" && method === "GET") {
+    // The gateway's mirror identity (UPSTREAM_HANDLE / session cookie) belongs
+    // to the server, not the visitor. Without a local session the visitor is
+    // anonymous — returning the mirror handle here made every logged-out
+    // visitor look signed in as the operator (client treats 200 as auth).
+    if (!user) return errorResponse(res, 401, "not_signed_in");
     const cfg = loadUpstreamConfig();
     if (cfg.sessionCookie) {
       return proxyToUpstream(req, res, "/api/me");

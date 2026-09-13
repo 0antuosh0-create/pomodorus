@@ -6,15 +6,18 @@ node_modules/
 
 # Build output
 bin/
+dist/
+client/dist/
 # The client is built into the Go binary's embed directory; the directory is
 # tracked (embed needs it to exist) but its contents never are.
 server/internal/web/dist/*
-!server/internal/web/dist/.gitkeep
-
-# Env — every secret lives here and none of it is committed.
+# Env & local runtime data — every secret lives here and none of it is committed.
 .env
 .env.*
 !.env.example
+pomodorus-data.json
+upstream-config.json
+!upstream-config.example.json
 
 # Playwright
 test-results/

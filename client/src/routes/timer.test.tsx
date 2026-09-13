@@ -374,8 +374,12 @@ describe("the progress bar", () => {
     // A negative percentage is invalid CSS: the declaration would be dropped,
     // width would fall back to auto, and the bar would flash full white at
     // exactly the moment a session ends.
+    //
+    // The session needs enough remaining time for the Running branch to
+    // mount before `isRinging` fires; 500 ms is plenty for the JSDOM render
+    // while still putting the bar at ≈100 %.
     server({
-      session: workSession({ startedAt: NOW - 25 * 60_000, endsAt: NOW + 1 }),
+      session: workSession({ startedAt: NOW - 25 * 60_000, endsAt: NOW + 500 }),
     });
     renderTimer();
 

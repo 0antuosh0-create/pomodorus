@@ -1,4 +1,4 @@
-import { Minus, Plus, SlidersHorizontal } from "lucide-react";
+import { Bell, Minus, Plus, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 
 import { Failure } from "@/components/failure";
@@ -16,6 +16,7 @@ import { copy, t } from "@/lib/copy";
 import { faDigits } from "@/lib/format";
 import { shown, step, type IntervalKey, type Intervals } from "@/lib/intervals";
 
+import { testBell } from "@/lib/sound";
 /**
  * One interval, as the same − / + pair the start screen uses for the pomodoro
  * length. The button for an end of the band is disabled rather than silently
@@ -137,7 +138,7 @@ export function SettingsDialog({
         </Button>
       </DialogTrigger>
 
-      <DialogContent>
+      <DialogContent className="sm:py-12">
         {/* Read by the screen reader, not by the eye: v1's dialog is three
             rows and a close button, and a heading over them would be the one
             thing on this screen saying what is already obvious. */}
@@ -150,6 +151,18 @@ export function SettingsDialog({
           {row("shortBreakMs", copy.timer.settingsShortBreak, minutes)}
           {row("longBreakMs", copy.timer.settingsLongBreak, minutes)}
           {row("perCycle", copy.timer.settingsPerCycle, count)}
+          <div className="flex items-center justify-between pt-3 border-t border-border/40 text-xs">
+            <span className="text-muted-foreground">صدای زنگ اتمام تایمر</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => testBell()}
+            >
+              <Bell />
+              تست صدای زنگ
+            </Button>
+          </div>
           <Failure message={error} />
         </div>
       </DialogContent>

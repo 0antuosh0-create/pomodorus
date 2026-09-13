@@ -13,6 +13,27 @@
    arbitrary is load-bearing and has a note. */
 
 @font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
   font-family: "Peyda";
   src: url("/fonts/PeydaFaNumWeb-Thin.woff2") format("woff2");
   font-weight: 100;
@@ -87,32 +108,33 @@
    mode, no toggle, and no `dark:` variant in play anywhere. */
 :root {
   --background: oklch(0 0 0);
-  --foreground: oklch(1 0 0);
-  --card: oklch(0 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.12 0 0);
   --card-foreground: oklch(1 0 0);
-  --popover: oklch(0 0 0);
+  --popover: oklch(0.125 0 0);
   --popover-foreground: oklch(1 0 0);
   --primary: oklch(1 0 0);
   --primary-foreground: oklch(0 0 0);
-  --secondary: oklch(0.2 0 0);
+  --secondary: oklch(0.18 0 0);
   --secondary-foreground: oklch(1 0 0);
-  --muted: oklch(0.2 0 0);
-  --muted-foreground: oklch(0.65 0 0);
+  --muted: oklch(0.18 0 0);
+  --muted-foreground: oklch(0.72 0 0);
   --accent: oklch(0.2 0 0);
   --accent-foreground: oklch(1 0 0);
   /* Deliberately the same grey as --muted-foreground. The theme is
      monochrome, so an error may not separate itself by hue — it separates
      itself by being full white, boxed and iconned instead. */
   --destructive: oklch(0.65 0 0);
-  --input: oklch(1 0 0 / 22%);
+  --input: oklch(1 0 0 / 14%);
   --ring: oklch(0.65 0 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  /* Flat: no corner radius anywhere. Every derived radius computes off this,
-     so they are all zero. */
+  /* Sharp geometry: zero base radius. Every derived step (sm/md/lg/xl/2xl)
+     computes off this, so buttons, inputs, modals and cards share the same
+     crisp rectangular edge. */
   --radius: 0rem;
 }
 
@@ -140,12 +162,11 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  /* The one non-neutral value in the palette: a faintly warm grey, and the
-     only token that isn't oklch. Kept exactly as it was. */
-  --color-border: hsl(24 6% 25%);
+  /* Crisp visible separations on dark background: white at ~14% alpha. */
+  --color-border: oklch(1 0 0 / 14%);
 
-  --font-sans: "Peyda", ui-sans-serif, system-ui, sans-serif;
-  --font-heading: "Peyda", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Vazirmatn", "Vazir", "Peyda", system-ui, -apple-system, sans-serif;
+  --font-heading: "Vazirmatn", "Vazir", "Peyda", system-ui, -apple-system, sans-serif;
   /* For a run of Latin text — an address, a handle — inside the Persian page.
      The UI font is Peyda *FaNum*, which draws ASCII digits as Persian glyphs;
      that is right for every number the app writes and wrong for a string the
@@ -192,4 +213,12 @@
        scroll container and break `position: sticky`. */
     overflow-x: clip;
   }
+}
+
+.font-vazir {
+  font-family: "Vazirmatn", "Vazir", sans-serif !important;
+}
+
+@utility font-vazir {
+  font-family: "Vazirmatn", "Vazir", sans-serif !important;
 }

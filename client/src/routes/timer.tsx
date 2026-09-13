@@ -1,5 +1,5 @@
 import { BellRing, Play, SkipForward } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { CategoryPicker } from "@/components/category-picker";
 import { Failure } from "@/components/failure";
@@ -31,6 +31,7 @@ import {
 } from "@/lib/session";
 import { unlockAudio } from "@/lib/sound";
 
+import { useMTracker } from "@/lib/mtracker";
 const isNullableString = (value: unknown): value is string | null =>
   value === null || typeof value === "string";
 
@@ -79,7 +80,7 @@ function sessionLabel(session: Session): string {
  */
 export function TimerRoute() {
   const { session, cycle, intervals, start, cancel, confirm, save } = useSession();
-  // The screens are one question asked of the clock, not states anything
+  const { syncFromPomodorus } = useMTracker();
   // stores: before its end a session is running, after its end and
   // unacknowledged it is ringing.
   const now = useTick();
@@ -128,6 +129,37 @@ export function TimerRoute() {
     categoryId: known(rest.resumeCategoryId) ?? picked,
     durationMs: rest.resumeDurationMs ?? minutes * 60_000,
   });
+  // Power keyboard shortcuts: Space to start/confirm, Esc to cancel, Arrows to adjust
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (session === null && picked !== null) {
+          void beginWork(picked, minutes * 60_000);
+        } else if (session && isRinging(session, now)) {
+          void confirm(session.id);
+        }
+      } else if (e.code === "Escape") {
+        if (session !== null && session !== undefined) {
+          void cancel(session.id);
+        }
+      } else if (session === null) {
+        if (e.code === "ArrowRight" || e.code === "ArrowUp") {
+          e.preventDefault();
+          setMinutes((m) => Math.min(60, m + 5));
+        } else if (e.code === "ArrowLeft" || e.code === "ArrowDown") {
+          e.preventDefault();
+          setMinutes((m) => Math.max(5, m - 5));
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [session, picked, minutes, now]);
+
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-4 sm:p-6">
@@ -155,7 +187,12 @@ export function TimerRoute() {
           perCycle={intervals.perCycle}
           now={now}
           canContinue={resume(session).categoryId !== null}
-          onConfirm={confirm}
+          onConfirm={async (id) => {
+            if (session && session.kind === "work") {
+              syncFromPomodorus(session.categoryName || "تسک عمومی", session.durationMs);
+            }
+            return confirm(id);
+          }}
           onContinue={async () => {
             const { categoryId, durationMs } = resume(session);
             try {

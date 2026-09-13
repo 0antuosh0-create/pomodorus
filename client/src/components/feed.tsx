@@ -20,7 +20,9 @@ export function Feed() {
   // so this ticks, and the list is filtered on every tick.
   const now = useTick();
 
-  const live = entries?.filter((entry) => isLive(entry, now));
+  const live = Array.isArray(entries)
+    ? entries.filter((entry) => isLive(entry, now))
+    : undefined;
 
   return (
     <section className="w-full rounded-none border border-border bg-card">

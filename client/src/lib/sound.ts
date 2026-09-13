@@ -125,3 +125,11 @@ export function stopAlarm() {
     bus = null;
   }
 }
+
+/** Play a single test chime directly */
+export function testBell() {
+  const audio = context();
+  if (!audio) return;
+  if (audio.state === "suspended") void audio.resume();
+  ding(audio, audio.currentTime + 0.05, audio.destination);
+}

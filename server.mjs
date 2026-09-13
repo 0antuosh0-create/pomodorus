@@ -529,6 +529,16 @@ async function proxyToUpstream(req, res, pathAndQuery, method = req.method, body
   if (cookieVal) {
     headers["Cookie"] = `pomodorus_session=${cookieVal}`;
   }
+  // Upstream rate-limits auth per IP and reads X-Forwarded-For TRUSTED_PROXY_HOPS
+  // back, so a proxy must forward the real client chain. Without this every
+  // visitor shares the gateway's egress IP — 8 codes / 15 verifies per window
+  // for the whole world, on Render's shared NAT even less. Append honestly;
+  // upstream picks the position it trusts from the right.
+  const peer = req.socket?.remoteAddress;
+  if (peer) {
+    const incomingXFF = req.headers["x-forwarded-for"];
+    headers["X-Forwarded-For"] = incomingXFF ? `${incomingXFF}, ${peer}` : peer;
+  }
 
   if (body) {
     headers["Content-Type"] = "application/json";
@@ -545,15 +555,25 @@ async function proxyToUpstream(req, res, pathAndQuery, method = req.method, body
       "Content-Type": upstreamRes.headers.get("content-type") || "application/json; charset=utf-8",
     };
 
-    const setCookie = upstreamRes.headers.get("set-cookie");
-    if (setCookie) {
-      resHeaders["Set-Cookie"] = setCookie;
-      const match = setCookie.match(/pomodorus_session=([^;]+)/);
+    // Forward every cookie separately and intact. `.get("set-cookie")` joins
+    // multiples with ", " which corrupts Expires dates — undici's
+    // getSetCookie() exists for exactly this. node.writeHead accepts an array.
+    const upstreamCookies =
+      typeof upstreamRes.headers.getSetCookie === "function"
+        ? upstreamRes.headers.getSetCookie()
+        : upstreamRes.headers.get("set-cookie")
+          ? [upstreamRes.headers.get("set-cookie")]
+          : [];
+    if (upstreamCookies.length > 0) {
+      resHeaders["Set-Cookie"] = upstreamCookies;
+      const sessionMatch = upstreamCookies
+        .map((c) => c.match(/pomodorus_session=([^;]+)/))
+        .find(Boolean);
       // A visitor logging in through the site must not clobber the gateway's
       // mirror identity with their own session — only the admin rotates it.
       // (Without UPSTREAM_ADMIN_TOKEN this is unchanged: everything is admin.)
-      if (match && match[1] && isUpstreamAdmin(req, body)) {
-        saveUpstreamConfig({ sessionCookie: match[1] });
+      if (sessionMatch && sessionMatch[1] && isUpstreamAdmin(req, body)) {
+        saveUpstreamConfig({ sessionCookie: sessionMatch[1] });
         upstreamAuthenticated = true;
         startUpstreamWebSocket();
       }

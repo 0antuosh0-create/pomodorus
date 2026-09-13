@@ -199,7 +199,7 @@ export function UpstreamSyncModal({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="max-w-lg p-6 sm:p-8 rounded-none border border-border bg-popover text-popover-foreground font-vazir max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg p-6 sm:p-8 rounded-none border border-border bg-popover text-popover-foreground font-vazir max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
         <DialogHeader className="space-y-1.5 text-start">
           <div className="flex items-center gap-2">
             <span className="size-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/20" />

@@ -106,7 +106,7 @@ export function ManualEntryModal({
 
             {/* Custom Task Dropdown */}
             {taskPickerOpen ? (
-              <div className="absolute top-full start-0 z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-2xl py-1 divide-y divide-border/50 max-h-48 overflow-y-auto">
+              <div className="absolute top-full start-0 z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-2xl py-1 divide-y divide-border/50 max-h-48 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
                 {tasks.map((t) => (
                   <button
                     key={t.id}

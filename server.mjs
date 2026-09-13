@@ -711,20 +711,14 @@ async function handleRequest(req, res) {
   }
 
   if (pathname === "/api/me" && method === "GET") {
-    // The gateway's mirror identity (UPSTREAM_HANDLE / session cookie) belongs
-    // to the server, not the visitor. Without a local session the visitor is
-    // anonymous — returning the mirror handle here made every logged-out
-    // visitor look signed in as the operator (client treats 200 as auth).
-    if (!user) return errorResponse(res, 401, "not_signed_in");
-    const cfg = loadUpstreamConfig();
-    if (cfg.sessionCookie) {
-      return proxyToUpstream(req, res, "/api/me");
-    }
-    return jsonResponse(res, 200, {
-      handle: cfg.handle,
-      isMirror: true,
-      hasSessionCookie: false,
-    });
+    // Identity belongs to the visitor's own cookie, never the gateway mirror:
+    // no cookie → anonymous (the client treats 401 as signed-out); cookie →
+    // proxied with visitor-first precedence, so the answer is about them.
+    // (`user` is always null here — db.sessions is never written — so it
+    // cannot gate anything; the previous revision 401'd everyone, even fresh
+    // logins, which was the login loop.)
+    if (!cookies["pomodorus_session"]) return errorResponse(res, 401, "not_signed_in");
+    return proxyToUpstream(req, res, "/api/me");
   }
 
   if (pathname === "/api/auth/request-code" && method === "POST") {

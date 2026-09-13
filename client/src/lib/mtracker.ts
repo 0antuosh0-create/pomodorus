@@ -1,3 +1,7 @@
+/**
+ * Core habit tracking, statistical rhythm metrics, and Jalali calendar engine.
+ * Synthesized from mTracker (https://github.com/moein8668-git/mTracker) by Moein (@moein8668-git).
+ */
 import { useEffect, useState, useCallback } from "react";
 import { faDigits } from "@/lib/format";
 

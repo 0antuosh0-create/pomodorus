@@ -197,12 +197,16 @@ function SignOut() {
   const navigate = useNavigate();
 
   async function signOut() {
+    try {
+      localStorage.removeItem("upstream_admin_token");
+      localStorage.removeItem("mtracker.sync_handle");
+    } catch {}
     await post("/api/auth/sign-out");
     await auth.refresh();
     // Away from a page that is about to stop being yours: the profile still
     // reads, but the button that was just pressed would vanish under the
     // cursor and the heading would change to a name.
-    void navigate("/");
+    void navigate("/", { replace: true });
   }
 
   return (

@@ -223,6 +223,7 @@ function CodeStep({ email }: { email: string }) {
               id="code"
               name="code"
               maxLength={6}
+              autoComplete="one-time-code"
               value={code}
               onChange={(next) => setCode(enDigits(next))}
               autoFocus

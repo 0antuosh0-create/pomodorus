@@ -211,6 +211,7 @@ export function ManualEntryModal({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="روی چه مبحثی کار کردی؟"
+              maxLength={200}
             />
           </div>
 

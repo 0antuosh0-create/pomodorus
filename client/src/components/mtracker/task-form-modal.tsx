@@ -89,6 +89,7 @@ export function TaskFormModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="مثلاً: برنامه‌نویسی، زبان، طراحی..."
+              maxLength={60}
               required
               autoFocus
             />

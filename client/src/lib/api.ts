@@ -101,6 +101,7 @@ export function messageFor(error: unknown): string {
     case "handle_invalid":
       return copy.errors.usernameInvalid;
     case "handle_taken":
+    case "handle_already_set":
       return copy.errors.usernameTaken;
     case "handle_profane":
       return copy.errors.usernameProfane;

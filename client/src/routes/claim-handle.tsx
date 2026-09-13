@@ -43,6 +43,10 @@ export function ClaimHandleRoute() {
   }
 
   async function signOut() {
+    try {
+      localStorage.removeItem("upstream_admin_token");
+      localStorage.removeItem("mtracker.sync_handle");
+    } catch {}
     await post("/api/auth/sign-out");
     await auth.refresh();
   }

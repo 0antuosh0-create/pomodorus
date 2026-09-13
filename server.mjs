@@ -257,13 +257,49 @@ async function getLiveFeed() {
   return entries;
 }
 
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+};
+
+const rateLimits = new Map();
+function checkRateLimit(key, limit = 6, windowMs = 60000) {
+  const now = Date.now();
+  const times = rateLimits.get(key) || [];
+  const valid = times.filter((t) => now - t < windowMs);
+  if (valid.length >= limit) {
+    rateLimits.set(key, valid);
+    return false;
+  }
+  valid.push(now);
+  rateLimits.set(key, valid);
+  return true;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, times] of rateLimits.entries()) {
+    const valid = times.filter((t) => now - t < 60000);
+    if (valid.length === 0) rateLimits.delete(key);
+    else rateLimits.set(key, valid);
+  }
+}, 5 * 60 * 1000).unref();
+
 function parseCookies(req) {
   const list = {};
   const rc = req.headers.cookie;
   if (!rc) return list;
   rc.split(";").forEach((cookie) => {
     const parts = cookie.split("=");
-    list[parts.shift().trim()] = decodeURI(parts.join("="));
+    const name = parts.shift()?.trim();
+    if (!name) return;
+    const rawVal = parts.join("=");
+    try {
+      list[name] = decodeURIComponent(rawVal);
+    } catch {
+      list[name] = rawVal;
+    }
   });
   return list;
 }
@@ -278,6 +314,7 @@ function jsonResponse(res, status, data, extraHeaders = {}) {
     res.writeHead(status, {
       "Content-Type": "application/json; charset=utf-8",
       "Content-Length": Buffer.byteLength(body),
+      ...SECURITY_HEADERS,
       ...extraHeaders,
     });
     res.end(body);
@@ -371,13 +408,21 @@ function loadUpstreamConfig() {
     handle: process.env.UPSTREAM_HANDLE || "anoush",
     sessionCookie: process.env.UPSTREAM_SESSION_COOKIE || "",
   };
+  let config = { ...defaults };
   try {
     if (fs.existsSync(UPSTREAM_CONFIG_PATH)) {
       const raw = JSON.parse(fs.readFileSync(UPSTREAM_CONFIG_PATH, "utf-8"));
-      return { ...defaults, ...raw };
+      config = { ...defaults, ...raw };
     }
   } catch {}
-  return defaults;
+  // Environment variables override disk config so Render dashboard settings survive restarts
+  if (process.env.UPSTREAM_SESSION_COOKIE) {
+    config.sessionCookie = process.env.UPSTREAM_SESSION_COOKIE;
+  }
+  if (process.env.UPSTREAM_HANDLE) {
+    config.handle = process.env.UPSTREAM_HANDLE;
+  }
+  return config;
 }
 
 function saveUpstreamConfig(updates) {
@@ -392,17 +437,23 @@ function saveUpstreamConfig(updates) {
   }
 }
 // --- Gateway admin gate -------------------------------------------------------
-// There is no working local login in this gateway (db.sessions is never
-// written, so `user` is always null and cannot gate anything). The global
-// upstream identity is guarded by a shared admin token instead: with
-// UPSTREAM_ADMIN_TOKEN set, mutating it requires the token; without it
-// (single-user local dev) behavior is unchanged.
+// Constant-time token comparison against timing side-channel attacks
+function safeTokenCompare(provided, expected) {
+  if (typeof provided !== "string" || typeof expected !== "string" || !provided || !expected) {
+    return false;
+  }
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
 function isUpstreamAdmin(req, body) {
   const token = process.env.UPSTREAM_ADMIN_TOKEN || "";
   if (!token) return true;
   const headerToken = req.headers["x-admin-token"];
-  if (typeof headerToken === "string" && headerToken === token) return true;
-  if (body && typeof body.adminToken === "string" && body.adminToken === token) return true;
+  if (typeof headerToken === "string" && safeTokenCompare(headerToken, token)) return true;
+  if (body && typeof body.adminToken === "string" && safeTokenCompare(body.adminToken, token)) return true;
   return false;
 }
 
@@ -540,7 +591,13 @@ async function proxyToUpstream(req, res, pathAndQuery, method = req.method, body
     headers["X-Forwarded-For"] = incomingXFF ? `${incomingXFF}, ${peer}` : peer;
   }
 
-  if (body) {
+  let cleanBody = body;
+  if (cleanBody && typeof cleanBody === "object" && !Array.isArray(cleanBody)) {
+    const { adminToken, ...rest } = cleanBody;
+    cleanBody = Object.keys(rest).length ? rest : null;
+  }
+
+  if (cleanBody) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -548,7 +605,7 @@ async function proxyToUpstream(req, res, pathAndQuery, method = req.method, body
     const upstreamRes = await fetch(targetUrl, {
       method,
       headers,
-      body: body ? JSON.stringify(body) : undefined,
+      body: cleanBody ? JSON.stringify(cleanBody) : undefined,
     });
 
     const resHeaders = {
@@ -702,7 +759,8 @@ async function handleRequest(req, res) {
         hasSessionCookie: Boolean(cfg.sessionCookie),
       });
     } catch (err) {
-      return errorResponse(res, 500, "upstream_test_failed: " + (err?.message || err));
+      console.error("[Upstream Config] Error:", err?.message || err);
+      return errorResponse(res, 500, "upstream_test_failed");
     }
   }
 
@@ -722,6 +780,10 @@ async function handleRequest(req, res) {
   }
 
   if (pathname === "/api/auth/request-code" && method === "POST") {
+    const clientIp = String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "local").split(",")[0].trim();
+    if (!checkRateLimit(`reqcode:${clientIp}`, 6, 60000)) {
+      return errorResponse(res, 429, "rate_limited");
+    }
     try {
       const body = await readJsonBody(req);
       const email = String(body.email || "").trim().toLowerCase();
@@ -752,8 +814,11 @@ async function handleRequest(req, res) {
       upstreamAuthenticated = false;
       startUpstreamWebSocket();
     }
+    const isTls = Boolean(req.socket?.encrypted || req.headers["x-forwarded-proto"] === "https");
+    const secureSuffix = isTls ? "; Secure" : "";
     res.writeHead(204, {
-      "Set-Cookie": "pomodorus_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
+      "Set-Cookie": `pomodorus_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureSuffix}`,
+      ...SECURITY_HEADERS,
     });
     return res.end();
   }
@@ -904,9 +969,17 @@ async function handleRequest(req, res) {
   }
 
   if (pathname.startsWith("/api/profile/") && method === "GET") {
-    const handle = decodeURIComponent(pathname.slice("/api/profile/".length)).trim().toLowerCase();
-    let profileAccount = null;
+    let handle = "";
+    try {
+      handle = decodeURIComponent(pathname.slice("/api/profile/".length)).trim().toLowerCase();
+    } catch {
+      return errorResponse(res, 400, "invalid_handle");
+    }
+    if (!handle || !/^[a-z0-9_]{1,32}$/.test(handle)) {
+      return errorResponse(res, 404, "user_not_found");
+    }
 
+    let profileAccount = null;
     for (const acc of Object.values(db.accounts)) {
       if (acc.handle && acc.handle.toLowerCase() === handle) {
         profileAccount = acc;
@@ -914,9 +987,11 @@ async function handleRequest(req, res) {
       }
     }
 
+    const rawRange = Number(parsedUrl.searchParams.get("range") ?? parsedUrl.searchParams.get("days")) || 7;
+    const range = Math.min(Math.max(1, Math.floor(rawRange)), 90);
+
     if (!profileAccount) {
       try {
-        const range = Number(parsedUrl.searchParams.get("range") ?? parsedUrl.searchParams.get("days")) || 7;
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 3500);
         const remoteRes = await fetch(`https://pomodorus.yazdan.me/api/profile/${encodeURIComponent(handle)}?range=${range}`, {
@@ -930,7 +1005,6 @@ async function handleRequest(req, res) {
       } catch {}
       return errorResponse(res, 404, "user_not_found");
     }
-    const range = Number(parsedUrl.searchParams.get("range") ?? parsedUrl.searchParams.get("days")) || 7;
     const allDays = profileAccount.history || createSampleProfileDays(profileAccount.handle);
     const sliceDays = allDays.slice(Math.max(0, allDays.length - range));
     const isOwner = Boolean(user && user.id === profileAccount.id);
@@ -1021,7 +1095,8 @@ async function handleRequest(req, res) {
         }
       });
     } catch (err) {
-      return errorResponse(res, 500, "sync_failed: " + (err?.message || err));
+      console.error("[Sync Remote] Error:", err?.message || err);
+      return errorResponse(res, 500, "sync_failed");
     }
   }
 
@@ -1122,7 +1197,8 @@ async function handleRequest(req, res) {
       } catch {
         return errorResponse(res, 400, "bad_request");
       }
-      return proxyToUpstream(req, res, pathname, "POST", Object.keys(body).length ? body : null);
+      const cleanBody = body && typeof body === "object" && Object.keys(body).length ? body : null;
+      return proxyToUpstream(req, res, pathname, "POST", cleanBody);
     }
     if (!user) return errorResponse(res, 401, "not_signed_in");
     const timerState = getUserTimerState(user.id);
@@ -1149,7 +1225,8 @@ async function handleRequest(req, res) {
       } catch {
         return errorResponse(res, 400, "bad_request");
       }
-      return proxyToUpstream(req, res, pathname, "POST", Object.keys(body).length ? body : null);
+      const cleanBody = body && typeof body === "object" && Object.keys(body).length ? body : null;
+      return proxyToUpstream(req, res, pathname, "POST", cleanBody);
     }
     if (!user) return errorResponse(res, 401, "not_signed_in");
     const timerState = getUserTimerState(user.id);
@@ -1263,6 +1340,7 @@ async function handleRequest(req, res) {
       "Content-Type": contentType,
       "Content-Length": stat.size,
       "Cache-Control": ext === ".html" || ext === ".avif" ? "no-cache" : "public, max-age=31536000, immutable",
+      ...SECURITY_HEADERS,
     });
     return fs.createReadStream(filePath).pipe(res);
   }
@@ -1276,6 +1354,7 @@ async function handleRequest(req, res) {
         "Content-Type": "text/html; charset=utf-8",
         "Content-Length": stat.size,
         "Cache-Control": "no-cache",
+        ...SECURITY_HEADERS,
       });
       return fs.createReadStream(indexHtml).pipe(res);
     }
@@ -1294,8 +1373,14 @@ server.on("upgrade", (req, socket, head) => {
     socket.destroy();
   });
 
-  const { pathname } = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-  if (pathname !== "/ws") {
+  let pathname = "";
+  try {
+    pathname = new URL(req.url, `http://${req.headers.host || "localhost"}`).pathname;
+  } catch {
+    socket.destroy();
+    return;
+  }
+  if (pathname !== "/ws" || wsClients.size >= 250) {
     socket.destroy();
     return;
   }

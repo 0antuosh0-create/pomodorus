@@ -608,10 +608,16 @@ export function useMTracker() {
   }, [db]);
 
   const exportCsv = useCallback(() => {
+    const sanitizeCell = (val: unknown) => {
+      const str = String(val ?? "").replace(/"/g, '""');
+      return /^[=+\-@\t\r]/.test(str) ? `'${str}` : str;
+    };
     let csv = "ID,Task,Date,Hours,Note\n";
     for (const e of db.entries) {
       const task = db.tasks.find((t) => t.id === e.taskId);
-      csv += `"${e.id}","${task ? task.name : ""}","${e.date}",${e.hours},"${e.note || ""}"\n`;
+      const taskName = sanitizeCell(task ? task.name : "");
+      const note = sanitizeCell(e.note || "");
+      csv += `"${sanitizeCell(e.id)}","${taskName}","${sanitizeCell(e.date)}",${e.hours},"${note}"\n`;
     }
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
